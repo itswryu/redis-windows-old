@@ -6,7 +6,7 @@ on:
       tag_name:
         description: 'version to build'
         required: true
-        default: "6.2.13"
+        default: "6.4.2"
         type: string
       latest:
         description: 'Indicator of whether or not is a prerelease'
@@ -47,8 +47,28 @@ jobs:
           workspace=$(pwd)
           sed -i 's/__GNU_VISIBLE/1/' /d/a/_temp/msys64/usr/include/dlfcn.h
           cd redis-${{ inputs.tag_name }} && make -i PREFIX=$workspace/dist install BUILD_TLS=yes
-          cp $workspace/README.md $workspace/start.bat /d/a/_temp/msys64/usr/bin/msys-2.0.dll /d/a/_temp/msys64/usr/bin/msys-crypto-3.dll /d/a/_temp/msys64/usr/bin/msys-ssl-3.dll redis.conf sentinel.conf $workspace/dist/bin/
+          cp /d/a/_temp/msys64/usr/bin/msys-2.0.dll /d/a/_temp/msys64/usr/bin/msys-crypto-3.dll /d/a/_temp/msys64/usr/bin/msys-ssl-3.dll redis.conf sentinel.conf $workspace/dist/bin/
           cd $workspace/dist/
+          sed -i '/^bind/c\bind 100\.100\.100\.11 127\.0\.0\.1' bin/redis.conf
+          sed -i 's/^pidfile/# pidfile/' bin/redis.conf
+          sed -i '/^logfile/c\logfile "\./logs/redis\.log"' bin/redis.conf
+          sed -i 's/^# save ""/save ""/' bin/redis.conf
+          sed -i '/^# masterauth/c\masterauth morpheus+redis' bin/redis.conf
+          sed -i '/^# repl-backlog-size/c\repl-backlog-size 100mb' bin/redis.conf
+          sed -i '/^# requirepass/c\requirepass morpheus+redis' bin/redis.conf
+          sed -i 's/^appendonly no/appendonly yes/' bin/redis.conf
+          sed -i '/^# bind/c\bind 100\.100\.100\.11 127\.0\.0\.1' bin/sentinel.conf
+          sed -i 's/^# protected-mode/protected-mode/' bin/sentinel.conf
+          sed -i 's/^pidfile/# pidfile/' bin/sentinel.conf
+          sed -i '/^logfile/c\logfile "\./logs/sentinel\.log"' bin/sentinel.conf
+          sed -i '/^dir/c\dir \./' bin/sentinel.conf
+          sed -i 's/^sentinel monitor mymaster 127.0.0.1/sentinel monitor mymaster 100.100.100.11/' bin/sentinel.conf
+          sed -i '/^# sentinel auth-pass mymaster/c\sentinel auth-pass mymaster morpheus+redis' bin/sentinel.conf
+          sed -i '/^sentinel failover-timeout mymaster/c\sentinel failover-timeout mymaster 120000' bin/sentinel.conf
+          mv bin/redis-check-aof bin/redis-check-aof.exe
+          mv bin/redis-check-rdb bin/redis-check-rdb.exe
+          mv bin/redis-sentinel bin/redis-sentinel.exe
+          mkdir bin/logs
           mv bin Redis-${{ inputs.tag_name }}-Windows-x64
           tar -cvzf $workspace/Redis-${{ inputs.tag_name }}-Windows-x64.tar.gz Redis-${{ inputs.tag_name }}-Windows-x64/*
           cp $workspace/publish/* Redis-${{ inputs.tag_name }}-Windows-x64/
@@ -71,7 +91,7 @@ jobs:
         run: |
           "From workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" | Out-File -Append .\redis_latest_body.txt
         shell: pwsh
-        
+
       - name: Release
         if: ${{ success() }}
         uses: softprops/action-gh-release@v1

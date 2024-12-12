@@ -7,7 +7,7 @@ namespace RedisService
 {
     class Program
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:验证平台兼容性", Justification = "<挂起>")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416: Verify Platform Compatibility", Justification = "<Suspend>")]
         static void Main()
         {
             ServiceBase.Run(new RedisService());
@@ -24,8 +24,15 @@ namespace RedisService
             var basePath = Path.Combine(AppContext.BaseDirectory);
             var diskSymbol = basePath[..basePath.IndexOf(":")];
             var confPath = basePath.Replace(diskSymbol + ":", "/cygdrive/" + diskSymbol);
+            var exeName = "redis-server.exe";
+            var confName = "redis.conf";
+            if (System.Diagnostics.Process.GetCurrentProcess().ProcessName.Trim().Equals("SentinelService", StringComparison.OrdinalIgnoreCase))
+            {
+                exeName = "redis-sentinel.exe";
+                confName = "sentinel.conf";
+            }
 
-            ProcessStartInfo processStartInfo = new(Path.Combine(basePath, "redis-server.exe").Replace("\\", "/"), String.Format("\"{0}\"", Path.Combine(confPath, "redis.conf").Replace("\\", "/")));
+            ProcessStartInfo processStartInfo = new(Path.Combine(basePath, exeName).Replace("\\", "/"), String.Format("\"{0}\"", Path.Combine(confPath, confName).Replace("\\", "/")));
             processStartInfo.WorkingDirectory = basePath;
             process = Process.Start(processStartInfo);
         }
